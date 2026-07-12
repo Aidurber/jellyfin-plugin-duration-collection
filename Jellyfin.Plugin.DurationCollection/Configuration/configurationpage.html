@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Duration Collections</title>
+    <style>
+        .durationCollectionRow {
+            display: grid;
+            grid-template-columns: minmax(12rem, 2fr) minmax(7rem, 1fr) minmax(7rem, 1fr) auto;
+            gap: 0.75rem;
+            align-items: end;
+            margin-bottom: 1rem;
+        }
+
+        .durationCollectionRow .inputContainer {
+            margin-bottom: 0;
+        }
+
+        .durationCollectionActions {
+            display: grid;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        @media (max-width: 700px) {
+            .durationCollectionRow {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="DurationCollectionsConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="DurationCollectionsConfigForm">
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h2 class="sectionTitle">Duration Collections</h2>
+                    </div>
+                    <p class="fieldDescription">
+                        Group series by average runtime of episodes with known durations. Range endpoints are inclusive.
+                    </p>
+                    <div id="DurationCollections"></div>
+                    <button id="AddDurationCollection" is="emby-button" type="button" class="raised emby-button">
+                        <span>Add duration collection</span>
+                    </button>
+                    <div class="durationCollectionActions">
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                        <button id="SyncDurationCollections" is="emby-button" type="button" class="raised block emby-button">
+                            <span>Sync duration collections</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+            (() => {
+                const pluginId = 'f4bbb9be-f00c-4f5d-a503-eb7b44d79a44';
+                const page = document.querySelector('#DurationCollectionsConfigPage');
+                const rows = page.querySelector('#DurationCollections');
+
+                function createInputContainer(labelText, type, className, value, attributes = {}) {
+                    const container = document.createElement('div');
+                    container.className = 'inputContainer';
+
+                    const label = document.createElement('label');
+                    label.className = 'inputLabel inputLabelUnfocused';
+                    label.textContent = labelText;
+
+                    const input = document.createElement('input');
+                    input.setAttribute('is', 'emby-input');
+                    input.type = type;
+                    input.className = className;
+                    input.value = value;
+                    Object.entries(attributes).forEach(([name, attributeValue]) => input.setAttribute(name, attributeValue));
+
+                    label.appendChild(input);
+                    container.appendChild(label);
+                    return container;
+                }
+
+                function createDurationCollectionRow(collection = { Title: 'Short Shows', MinMinutes: 0, MaxMinutes: 20 }) {
+                    const row = document.createElement('div');
+                    row.className = 'durationCollectionRow';
+                    row.appendChild(createInputContainer('Collection title', 'text', 'durationCollectionTitle', collection.Title ?? '', { required: '' }));
+                    row.appendChild(createInputContainer('Minimum minutes', 'number', 'durationCollectionMin', collection.MinMinutes ?? 0, { min: '0', step: '0.1', required: '' }));
+                    row.appendChild(createInputContainer('Maximum minutes', 'number', 'durationCollectionMax', collection.MaxMinutes ?? 20, { min: '0', step: '0.1', required: '' }));
+
+                    const removeButton = document.createElement('button');
+                    removeButton.setAttribute('is', 'emby-button');
+                    removeButton.type = 'button';
+                    removeButton.className = 'raised emby-button';
+                    removeButton.textContent = 'Remove';
+                    removeButton.addEventListener('click', () => row.remove());
+                    row.appendChild(removeButton);
+                    return row;
+                }
+
+                function readCollections() {
+                    return Array.from(rows.querySelectorAll('.durationCollectionRow')).map(row => {
+                        const title = row.querySelector('.durationCollectionTitle').value.trim();
+                        const minMinutes = Number(row.querySelector('.durationCollectionMin').value);
+                        const maxMinutes = Number(row.querySelector('.durationCollectionMax').value);
+
+                        if (minMinutes > maxMinutes) {
+                            throw new Error(`Minimum duration cannot exceed maximum duration for "${title}".`);
+                        }
+
+                        return { Title: title, MinMinutes: minMinutes, MaxMinutes: maxMinutes };
+                    });
+                }
+
+                function loadConfiguration() {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId)
+                        .then(config => {
+                            rows.replaceChildren();
+                            const collections = config.DurationCollections ?? [];
+                            collections.forEach(collection => rows.appendChild(createDurationCollectionRow(collection)));
+                            if (collections.length === 0) {
+                                rows.appendChild(createDurationCollectionRow());
+                            }
+                        })
+                        .catch(error => Dashboard.alert(error.message ?? 'Could not load configuration.'))
+                        .finally(() => Dashboard.hideLoadingMsg());
+                }
+
+                page.addEventListener('pageshow', loadConfiguration);
+                page.querySelector('#AddDurationCollection').addEventListener('click', () => {
+                    rows.appendChild(createDurationCollectionRow());
+                });
+                page.querySelector('#DurationCollectionsConfigForm').addEventListener('submit', event => {
+                    event.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId)
+                        .then(config => {
+                            config.DurationCollections = readCollections();
+                            return ApiClient.updatePluginConfiguration(pluginId, config);
+                        })
+                        .then(result => Dashboard.processPluginConfigurationUpdateResult(result))
+                        .catch(error => {
+                            Dashboard.hideLoadingMsg();
+                            Dashboard.alert(error.message ?? 'Could not save configuration.');
+                        });
+                });
+                page.querySelector('#SyncDurationCollections').addEventListener('click', () => {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.ajax({
+                        type: 'POST',
+                        url: ApiClient.getUrl('DurationCollections/Sync')
+                    })
+                        .then(() => Dashboard.alert('Duration collection sync complete.'))
+                        .catch(error => Dashboard.alert(error.message ?? 'Duration collection sync failed.'))
+                        .finally(() => Dashboard.hideLoadingMsg());
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>

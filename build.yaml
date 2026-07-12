@@ -1,0 +1,13 @@
+---
+name: "Duration Collections"
+guid: "f4bbb9be-f00c-4f5d-a503-eb7b44d79a44"
+version: "1.0.0.0"
+targetAbi: "10.11.11.0"
+framework: "net9.0"
+overview: "Creates collections from series average episode duration"
+description: "Creates and maintains Jellyfin collections containing series whose average episode duration falls within configured ranges."
+category: "General"
+owner: "local"
+artifacts:
+  - "Jellyfin.Plugin.DurationCollection.dll"
+changelog: "Initial personal build"
