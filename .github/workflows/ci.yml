@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore Jellyfin.Plugin.DurationCollection.sln
+      - run: dotnet format Jellyfin.Plugin.DurationCollection.sln --verify-no-changes --no-restore
+      - run: dotnet build Jellyfin.Plugin.DurationCollection.sln --configuration Release --no-restore /p:TreatWarningsAsErrors=true
+      - run: dotnet test Jellyfin.Plugin.DurationCollection.Tests/Jellyfin.Plugin.DurationCollection.Tests.csproj --configuration Release --no-build

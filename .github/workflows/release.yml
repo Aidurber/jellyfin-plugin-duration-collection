@@ -1,0 +1,119 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore Jellyfin.Plugin.DurationCollection.sln
+      - run: dotnet format Jellyfin.Plugin.DurationCollection.sln --verify-no-changes --no-restore
+      - run: dotnet build Jellyfin.Plugin.DurationCollection.sln --configuration Release --no-restore /p:TreatWarningsAsErrors=true
+      - run: dotnet test Jellyfin.Plugin.DurationCollection.Tests/Jellyfin.Plugin.DurationCollection.Tests.csproj --configuration Release --no-build
+
+  release:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          latest=$(git tag --list '[0-9]*.[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+          if [[ -z "$latest" ]]; then
+            next="1.0.0.0"
+          else
+            IFS=. read -r major minor patch revision <<< "$latest"
+            next="$major.$minor.$patch.$((revision + 1))"
+          fi
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build plugin
+        run: |
+          dotnet restore Jellyfin.Plugin.DurationCollection/Jellyfin.Plugin.DurationCollection.csproj
+          dotnet build Jellyfin.Plugin.DurationCollection/Jellyfin.Plugin.DurationCollection.csproj \
+            --configuration Release \
+            --no-restore \
+            /p:Version=${{ steps.version.outputs.version }} \
+            /p:AssemblyVersion=${{ steps.version.outputs.version }} \
+            /p:FileVersion=${{ steps.version.outputs.version }}
+
+      - name: Package plugin
+        id: package
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          archive="jellyfin-plugin-duration-collection-$version.zip"
+          mkdir release
+          cp Jellyfin.Plugin.DurationCollection/bin/Release/net9.0/Jellyfin.Plugin.DurationCollection.dll release/
+          (cd release && zip -r "../$archive" .)
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "checksum=$(md5sum "$archive" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Create release manifest
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+          CHECKSUM: ${{ steps.package.outputs.checksum }}
+        run: |
+          timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          source_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$VERSION/$ARCHIVE"
+          changelog="See release notes at $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$VERSION"
+          jq \
+            --arg version "$VERSION" \
+            --arg changelog "$changelog" \
+            --arg sourceUrl "$source_url" \
+            --arg checksum "$CHECKSUM" \
+            --arg timestamp "$timestamp" \
+            '.[0].versions = ([{
+              version: $version,
+              changelog: $changelog,
+              targetAbi: "10.11.11.0",
+              sourceUrl: $sourceUrl,
+              checksum: $checksum,
+              timestamp: $timestamp
+            }] + .[0].versions)' \
+            manifest.json > manifest.next.json
+          mv manifest.next.json manifest.json
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.package.outputs.archive }}
+            manifest.json
+
+      - name: Publish catalog manifest
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "chore: update manifest for $VERSION"
+          git push origin HEAD:main

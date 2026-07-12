@@ -21,10 +21,18 @@ Published output is under `Jellyfin.Plugin.DurationCollection/bin/Release/net9.0
 
 ## Install
 
+### Plugin catalog
+
+1. Open `Dashboard -> Plugins -> Catalog -> Settings`.
+2. Add repository URL `https://raw.githubusercontent.com/Aidurber/jellyfin-plugin-duration-collection/main/manifest.json`.
+3. Install `Duration Collections` from catalog and restart Jellyfin.
+4. Open `Dashboard -> Plugins -> Duration Collections` and configure duration ranges.
+5. Save, then use `Sync duration collections` or run scheduled task `Sync Duration Collections`.
+
+### Manual installation
+
 1. Create a `Duration Collections` directory inside Jellyfin's plugin directory.
 2. Copy `Jellyfin.Plugin.DurationCollection.dll` from published output into it.
 3. Restart Jellyfin.
-4. Open `Dashboard -> Plugins -> Duration Collections` and configure duration ranges.
-5. Save, then use `Sync duration collections` or run scheduled task `Sync Duration Collections`.
 
 Common Linux plugin root: `/var/lib/jellyfin/plugins/`.
