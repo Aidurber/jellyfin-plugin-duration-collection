@@ -7,7 +7,6 @@ using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Model.Entities;
 using NSubstitute;
 using Xunit;
 
@@ -19,23 +18,18 @@ public class DurationLibraryQueryServiceTests
     private readonly Guid _libraryId = Guid.NewGuid();
 
     [Fact]
-    public void GetItemsByDuration_UsesMovieRuntimeForSelectedMovieLibrary()
+    public void GetItemsByDuration_ResolvesSelectedMovieLibraryAndFiltersByRuntime()
     {
         var libraryId = Guid.NewGuid();
         var shortMovie = new Movie { Id = Guid.NewGuid(), RunTimeTicks = TimeSpan.FromMinutes(20).Ticks };
         var longMovie = new Movie { Id = Guid.NewGuid(), RunTimeTicks = TimeSpan.FromMinutes(21).Ticks };
         var unknownMovie = new Movie { Id = Guid.NewGuid() };
-        _libraryManager.GetVirtualFolders().Returns(
-        [
-            new VirtualFolderInfo
-            {
-                ItemId = libraryId.ToString("N"),
-                CollectionType = CollectionTypeOptions.movies,
-            },
-        ]);
-        _libraryManager.GetItemList(Arg.Is<InternalItemsQuery>(query =>
-                query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Movie)
-                && query.AncestorIds.Contains(libraryId)))
+        var library = Library(libraryId, Jellyfin.Data.Enums.CollectionType.movies);
+        _libraryManager.GetItemById<CollectionFolder>(libraryId).Returns(library);
+        _libraryManager.GetItemList(
+                Arg.Is<InternalItemsQuery>(query =>
+                    query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Movie)),
+                Arg.Is<List<BaseItem>>(parents => parents.Count == 1 && parents[0] == library))
             .Returns([shortMovie, longMovie, unknownMovie]);
 
         var result = new DurationLibraryQueryService(_libraryManager)
@@ -49,17 +43,12 @@ public class DurationLibraryQueryServiceTests
     {
         var libraryId = Guid.NewGuid();
         var series = Series("short", "short-key");
-        _libraryManager.GetVirtualFolders().Returns(
-        [
-            new VirtualFolderInfo
-            {
-                ItemId = libraryId.ToString("N"),
-                CollectionType = CollectionTypeOptions.tvshows,
-            },
-        ]);
-        _libraryManager.GetItemList(Arg.Is<InternalItemsQuery>(query =>
-                query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Series)
-                && query.AncestorIds.Contains(libraryId)))
+        var library = Library(libraryId, Jellyfin.Data.Enums.CollectionType.tvshows);
+        _libraryManager.GetItemById<CollectionFolder>(libraryId).Returns(library);
+        _libraryManager.GetItemList(
+                Arg.Is<InternalItemsQuery>(query =>
+                    query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Series)),
+                Arg.Is<List<BaseItem>>(parents => parents.Count == 1 && parents[0] == library))
             .Returns([series]);
         _libraryManager.GetItemList(Arg.Is<InternalItemsQuery>(query =>
                 query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Episode)))
@@ -147,17 +136,12 @@ public class DurationLibraryQueryServiceTests
         IReadOnlyList<Series> series,
         IReadOnlyDictionary<string, IReadOnlyList<BaseItem>> episodesByKey)
     {
-        _libraryManager.GetVirtualFolders().Returns(
-        [
-            new VirtualFolderInfo
-            {
-                ItemId = _libraryId.ToString("N"),
-                CollectionType = CollectionTypeOptions.tvshows,
-            },
-        ]);
-        _libraryManager.GetItemList(Arg.Is<InternalItemsQuery>(query =>
-                query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Series)
-                && query.AncestorIds.Contains(_libraryId)))
+        var library = Library(_libraryId, Jellyfin.Data.Enums.CollectionType.tvshows);
+        _libraryManager.GetItemById<CollectionFolder>(_libraryId).Returns(library);
+        _libraryManager.GetItemList(
+                Arg.Is<InternalItemsQuery>(query =>
+                    query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Series)),
+                Arg.Is<List<BaseItem>>(parents => parents.Count == 1 && parents[0] == library))
             .Returns(series.Cast<BaseItem>().ToList());
         _libraryManager.GetItemList(Arg.Is<InternalItemsQuery>(query =>
                 query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Episode)))
@@ -166,6 +150,9 @@ public class DurationLibraryQueryServiceTests
 
     private static Series Series(string name, string key)
         => new() { Id = Guid.NewGuid(), Name = name, PresentationUniqueKey = key };
+
+    private static CollectionFolder Library(Guid id, Jellyfin.Data.Enums.CollectionType collectionType)
+        => new() { Id = id, CollectionType = collectionType };
 
     private static Episode Episode(double minutes)
         => new() { Id = Guid.NewGuid(), RunTimeTicks = (long)(minutes * TimeSpan.TicksPerMinute) };
