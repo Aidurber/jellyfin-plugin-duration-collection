@@ -4,8 +4,10 @@ using System.Linq;
 using FluentAssertions;
 using Jellyfin.Plugin.DurationCollection.Services;
 using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Model.Entities;
 using NSubstitute;
 using Xunit;
 
@@ -14,9 +16,63 @@ namespace Jellyfin.Plugin.DurationCollection.Tests.Services;
 public class DurationLibraryQueryServiceTests
 {
     private readonly ILibraryManager _libraryManager = Substitute.For<ILibraryManager>();
+    private readonly Guid _libraryId = Guid.NewGuid();
 
     [Fact]
-    public void GetSeriesByAverageEpisodeDuration_IncludesInclusiveBoundaries()
+    public void GetItemsByDuration_UsesMovieRuntimeForSelectedMovieLibrary()
+    {
+        var libraryId = Guid.NewGuid();
+        var shortMovie = new Movie { Id = Guid.NewGuid(), RunTimeTicks = TimeSpan.FromMinutes(20).Ticks };
+        var longMovie = new Movie { Id = Guid.NewGuid(), RunTimeTicks = TimeSpan.FromMinutes(21).Ticks };
+        var unknownMovie = new Movie { Id = Guid.NewGuid() };
+        _libraryManager.GetVirtualFolders().Returns(
+        [
+            new VirtualFolderInfo
+            {
+                ItemId = libraryId.ToString("N"),
+                CollectionType = CollectionTypeOptions.movies,
+            },
+        ]);
+        _libraryManager.GetItemList(Arg.Is<InternalItemsQuery>(query =>
+                query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Movie)
+                && query.AncestorIds.Contains(libraryId)))
+            .Returns([shortMovie, longMovie, unknownMovie]);
+
+        var result = new DurationLibraryQueryService(_libraryManager)
+            .GetItemsByDuration(libraryId, 0, 20);
+
+        result.Should().Equal(shortMovie);
+    }
+
+    [Fact]
+    public void GetItemsByDuration_UsesAverageEpisodeRuntimeForSelectedTvLibrary()
+    {
+        var libraryId = Guid.NewGuid();
+        var series = Series("short", "short-key");
+        _libraryManager.GetVirtualFolders().Returns(
+        [
+            new VirtualFolderInfo
+            {
+                ItemId = libraryId.ToString("N"),
+                CollectionType = CollectionTypeOptions.tvshows,
+            },
+        ]);
+        _libraryManager.GetItemList(Arg.Is<InternalItemsQuery>(query =>
+                query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Series)
+                && query.AncestorIds.Contains(libraryId)))
+            .Returns([series]);
+        _libraryManager.GetItemList(Arg.Is<InternalItemsQuery>(query =>
+                query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Episode)))
+            .Returns([Episode(10), Episode(20)]);
+
+        var result = new DurationLibraryQueryService(_libraryManager)
+            .GetItemsByDuration(libraryId, 15, 15);
+
+        result.Should().Equal(series);
+    }
+
+    [Fact]
+    public void GetItemsByDuration_IncludesInclusiveAverageEpisodeBoundaries()
     {
         var shortSeries = Series("short", "short-key");
         var longSeries = Series("long", "long-key");
@@ -29,13 +85,13 @@ public class DurationLibraryQueryServiceTests
             });
 
         var result = new DurationLibraryQueryService(_libraryManager)
-            .GetSeriesByAverageEpisodeDuration(15, 30);
+            .GetItemsByDuration(_libraryId, 15, 30);
 
         result.Should().BeEquivalentTo([shortSeries, longSeries]);
     }
 
     [Fact]
-    public void GetSeriesByAverageEpisodeDuration_ExcludesOutsideRange()
+    public void GetItemsByDuration_ExcludesAverageEpisodeRuntimeOutsideRange()
     {
         var below = Series("below", "below-key");
         var above = Series("above", "above-key");
@@ -48,13 +104,13 @@ public class DurationLibraryQueryServiceTests
             });
 
         var result = new DurationLibraryQueryService(_libraryManager)
-            .GetSeriesByAverageEpisodeDuration(15, 30);
+            .GetItemsByDuration(_libraryId, 15, 30);
 
         result.Should().BeEmpty();
     }
 
     [Fact]
-    public void GetSeriesByAverageEpisodeDuration_SkipsSeriesWithoutKnownRuntime()
+    public void GetItemsByDuration_SkipsSeriesWithoutKnownRuntime()
     {
         var series = Series("unknown", "unknown-key");
         ConfigureLibrary(
@@ -65,13 +121,13 @@ public class DurationLibraryQueryServiceTests
             });
 
         var result = new DurationLibraryQueryService(_libraryManager)
-            .GetSeriesByAverageEpisodeDuration(0, 30);
+            .GetItemsByDuration(_libraryId, 0, 30);
 
         result.Should().BeEmpty();
     }
 
     [Fact]
-    public void GetSeriesByAverageEpisodeDuration_AveragesOnlyKnownPositiveRuntimes()
+    public void GetItemsByDuration_AveragesOnlyKnownPositiveEpisodeRuntimes()
     {
         var series = Series("mixed", "mixed-key");
         ConfigureLibrary(
@@ -82,7 +138,7 @@ public class DurationLibraryQueryServiceTests
             });
 
         var result = new DurationLibraryQueryService(_libraryManager)
-            .GetSeriesByAverageEpisodeDuration(15, 15);
+            .GetItemsByDuration(_libraryId, 15, 15);
 
         result.Should().ContainSingle().Which.Should().Be(series);
     }
@@ -91,8 +147,17 @@ public class DurationLibraryQueryServiceTests
         IReadOnlyList<Series> series,
         IReadOnlyDictionary<string, IReadOnlyList<BaseItem>> episodesByKey)
     {
+        _libraryManager.GetVirtualFolders().Returns(
+        [
+            new VirtualFolderInfo
+            {
+                ItemId = _libraryId.ToString("N"),
+                CollectionType = CollectionTypeOptions.tvshows,
+            },
+        ]);
         _libraryManager.GetItemList(Arg.Is<InternalItemsQuery>(query =>
-                query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Series)))
+                query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Series)
+                && query.AncestorIds.Contains(_libraryId)))
             .Returns(series.Cast<BaseItem>().ToList());
         _libraryManager.GetItemList(Arg.Is<InternalItemsQuery>(query =>
                 query.IncludeItemTypes.Contains(Jellyfin.Data.Enums.BaseItemKind.Episode)))

@@ -1,3 +1,4 @@
+using System;
 using Xunit;
 
 namespace Jellyfin.Plugin.DurationCollection.Tests.Configuration;
@@ -17,10 +18,16 @@ public class DurationCollectionTests
     [Fact]
     public void ConstructorStoresProvidedValues()
     {
-        var collection = new global::Jellyfin.Plugin.DurationCollection.Configuration.DurationCollection("Feature Length", 45, 90);
+        var libraryId = Guid.NewGuid();
+        var collection = new global::Jellyfin.Plugin.DurationCollection.Configuration.DurationCollection(
+            "Feature Length",
+            45,
+            90,
+            libraryId);
 
         Assert.Equal("Feature Length", collection.Title);
         Assert.Equal(45, collection.MinMinutes);
         Assert.Equal(90, collection.MaxMinutes);
+        Assert.Equal(libraryId, collection.LibraryId);
     }
 }

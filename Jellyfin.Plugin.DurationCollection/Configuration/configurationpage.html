@@ -6,7 +6,7 @@
     <style>
         .durationCollectionRow {
             display: grid;
-            grid-template-columns: minmax(12rem, 2fr) minmax(7rem, 1fr) minmax(7rem, 1fr) auto;
+            grid-template-columns: minmax(12rem, 2fr) minmax(12rem, 2fr) minmax(7rem, 1fr) minmax(7rem, 1fr) auto;
             gap: 0.75rem;
             align-items: end;
             margin-bottom: 1rem;
@@ -30,7 +30,7 @@
     </style>
 </head>
 <body>
-    <div id="DurationCollectionsConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button">
+    <div id="DurationCollectionsConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-select,emby-button">
         <div data-role="content">
             <div class="content-primary">
                 <form id="DurationCollectionsConfigForm">
@@ -38,7 +38,7 @@
                         <h2 class="sectionTitle">Duration Collections</h2>
                     </div>
                     <p class="fieldDescription">
-                        Group series by average runtime of episodes with known durations. Range endpoints are inclusive.
+                        Group movies by runtime or series by average episode runtime. Range endpoints are inclusive.
                     </p>
                     <div id="DurationCollections"></div>
                     <button id="AddDurationCollection" is="emby-button" type="button" class="raised emby-button">
@@ -60,6 +60,9 @@
                 const pluginId = 'f4bbb9be-f00c-4f5d-a503-eb7b44d79a44';
                 const page = document.querySelector('#DurationCollectionsConfigPage');
                 const rows = page.querySelector('#DurationCollections');
+                let libraries = [];
+
+                const normalizeId = value => (value ?? '').replace(/-/g, '').toLowerCase();
 
                 function createInputContainer(labelText, type, className, value, attributes = {}) {
                     const container = document.createElement('div');
@@ -81,9 +84,31 @@
                     return container;
                 }
 
-                function createDurationCollectionRow(collection = { Title: 'Short Shows', MinMinutes: 0, MaxMinutes: 20 }) {
+                function createLibrarySelect(libraryId) {
+                    const container = document.createElement('div');
+                    container.className = 'selectContainer';
+
+                    const label = document.createElement('label');
+                    label.className = 'selectLabel';
+                    label.textContent = 'Source library';
+
+                    const select = document.createElement('select');
+                    select.setAttribute('is', 'emby-select');
+                    select.className = 'durationCollectionLibrary emby-select-withcolor emby-select';
+                    select.required = true;
+                    select.appendChild(new Option('Select a library', ''));
+                    libraries.forEach(library => select.appendChild(new Option(library.Name, normalizeId(library.ItemId))));
+                    select.value = normalizeId(libraryId);
+
+                    label.appendChild(select);
+                    container.appendChild(label);
+                    return container;
+                }
+
+                function createDurationCollectionRow(collection = { LibraryId: '', Title: 'Short Shows', MinMinutes: 0, MaxMinutes: 20 }) {
                     const row = document.createElement('div');
                     row.className = 'durationCollectionRow';
+                    row.appendChild(createLibrarySelect(collection.LibraryId));
                     row.appendChild(createInputContainer('Collection title', 'text', 'durationCollectionTitle', collection.Title ?? '', { required: '' }));
                     row.appendChild(createInputContainer('Minimum minutes', 'number', 'durationCollectionMin', collection.MinMinutes ?? 0, { min: '0', step: '0.1', required: '' }));
                     row.appendChild(createInputContainer('Maximum minutes', 'number', 'durationCollectionMax', collection.MaxMinutes ?? 20, { min: '0', step: '0.1', required: '' }));
@@ -100,6 +125,7 @@
 
                 function readCollections() {
                     return Array.from(rows.querySelectorAll('.durationCollectionRow')).map(row => {
+                        const libraryId = row.querySelector('.durationCollectionLibrary').value;
                         const title = row.querySelector('.durationCollectionTitle').value.trim();
                         const minMinutes = Number(row.querySelector('.durationCollectionMin').value);
                         const maxMinutes = Number(row.querySelector('.durationCollectionMax').value);
@@ -108,16 +134,17 @@
                             throw new Error(`Minimum duration cannot exceed maximum duration for "${title}".`);
                         }
 
-                        return { Title: title, MinMinutes: minMinutes, MaxMinutes: maxMinutes };
+                        return { LibraryId: libraryId, Title: title, MinMinutes: minMinutes, MaxMinutes: maxMinutes };
                     });
                 }
 
                 function loadConfiguration() {
                     Dashboard.showLoadingMsg();
-                    ApiClient.getPluginConfiguration(pluginId)
-                        .then(config => {
+                    Promise.all([ApiClient.getPluginConfiguration(pluginId), ApiClient.getVirtualFolders()])
+                        .then(([config, virtualFolders]) => {
+                            libraries = virtualFolders.filter(folder => ['movies', 'tvshows'].includes(folder.CollectionType));
                             rows.replaceChildren();
-                            const collections = config.DurationCollections ?? [];
+                            const collections = (config.DurationCollections ?? []).filter(collection => normalizeId(collection.LibraryId));
                             collections.forEach(collection => rows.appendChild(createDurationCollectionRow(collection)));
                             if (collections.length === 0) {
                                 rows.appendChild(createDurationCollectionRow());

@@ -24,11 +24,16 @@ public class DurationCollectionSyncServiceTests
         var queryService = Substitute.For<IDurationLibraryQueryService>();
         var configurationProvider = Substitute.For<IPluginConfigurationProvider>();
         var logger = Substitute.For<ILogger<DurationCollectionSyncService>>();
-        var configuration = new global::Jellyfin.Plugin.DurationCollection.Configuration.DurationCollection("Short Shows", 0, 20);
+        var libraryId = Guid.NewGuid();
+        var configuration = new global::Jellyfin.Plugin.DurationCollection.Configuration.DurationCollection(
+            "Short Shows",
+            0,
+            20,
+            libraryId);
         var series = new Series { Id = Guid.NewGuid(), Name = "Short Show" };
         var boxSet = new BoxSet { Id = Guid.NewGuid(), Name = configuration.Title };
         configurationProvider.GetDurationCollections().Returns([configuration]);
-        queryService.GetSeriesByAverageEpisodeDuration(0, 20).Returns([series]);
+        queryService.GetItemsByDuration(libraryId, 0, 20).Returns([series]);
         libraryManager.GetItemList(Arg.Any<InternalItemsQuery>()).Returns(new List<BaseItem>());
         collectionManager.CreateCollectionAsync(Arg.Is<CollectionCreationOptions>(options =>
                 options.Name == configuration.Title && options.IsLocked))
@@ -46,5 +51,28 @@ public class DurationCollectionSyncServiceTests
         await collectionManager.Received(1).AddToCollectionAsync(
             boxSet.Id,
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == series.Id));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_IgnoresLegacyConfigurationWithoutLibrary()
+    {
+        var collectionManager = Substitute.For<ICollectionManager>();
+        var libraryManager = Substitute.For<ILibraryManager>();
+        var queryService = Substitute.For<IDurationLibraryQueryService>();
+        var configurationProvider = Substitute.For<IPluginConfigurationProvider>();
+        configurationProvider.GetDurationCollections().Returns(
+        [
+            new global::Jellyfin.Plugin.DurationCollection.Configuration.DurationCollection("Short Shows", 0, 20),
+        ]);
+        var service = new DurationCollectionSyncService(
+            collectionManager,
+            libraryManager,
+            queryService,
+            configurationProvider,
+            Substitute.For<ILogger<DurationCollectionSyncService>>());
+
+        await service.ExecuteAsync(Substitute.For<IProgress<double>>(), CancellationToken.None);
+
+        queryService.DidNotReceiveWithAnyArgs().GetItemsByDuration(default, default, default);
     }
 }

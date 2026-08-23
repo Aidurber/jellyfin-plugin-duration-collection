@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Jellyfin.Data.Enums;
+using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Controller.Dto;
+using MediaBrowser.Model.Entities;
 
 namespace Jellyfin.Plugin.DurationCollection.Services;
 
@@ -18,15 +20,51 @@ public sealed class DurationLibraryQueryService : IDurationLibraryQueryService
         _libraryManager = libraryManager;
     }
 
-    public IReadOnlyList<Series> GetSeriesByAverageEpisodeDuration(double minMinutes, double maxMinutes)
+    public IReadOnlyList<BaseItem> GetItemsByDuration(Guid libraryId, double minMinutes, double maxMinutes)
     {
         if (minMinutes < 0 || maxMinutes < minMinutes)
         {
             throw new ArgumentOutOfRangeException(nameof(minMinutes), "Duration range must be non-negative and ordered.");
         }
 
+        var library = _libraryManager.GetVirtualFolders()
+            .SingleOrDefault(folder => Guid.TryParse(folder.ItemId, out var itemId) && itemId == libraryId);
+        return library?.CollectionType switch
+        {
+            CollectionTypeOptions.movies => GetMoviesByDuration(libraryId, minMinutes, maxMinutes),
+            CollectionTypeOptions.tvshows => GetSeriesByAverageEpisodeDuration(libraryId, minMinutes, maxMinutes),
+            _ => throw new ArgumentException("The selected library must contain movies or TV shows.", nameof(libraryId)),
+        };
+    }
+
+    private IReadOnlyList<BaseItem> GetMoviesByDuration(Guid libraryId, double minMinutes, double maxMinutes)
+    {
+        return _libraryManager.GetItemList(new InternalItemsQuery
+        {
+            AncestorIds = [libraryId],
+            IncludeItemTypes = [BaseItemKind.Movie],
+            IsVirtualItem = false,
+            Recursive = true,
+            EnableTotalRecordCount = false,
+            DtoOptions = new DtoOptions(false) { EnableImages = false },
+        }).OfType<Movie>()
+            .Where(movie => movie.RunTimeTicks is > 0)
+            .Where(movie =>
+            {
+                var minutes = movie.RunTimeTicks!.Value / (double)TimeSpan.TicksPerMinute;
+                return minutes >= minMinutes && minutes <= maxMinutes;
+            })
+            .ToList();
+    }
+
+    private IReadOnlyList<Series> GetSeriesByAverageEpisodeDuration(
+        Guid libraryId,
+        double minMinutes,
+        double maxMinutes)
+    {
         var allSeries = _libraryManager.GetItemList(new InternalItemsQuery
         {
+            AncestorIds = [libraryId],
             IncludeItemTypes = [BaseItemKind.Series],
             IsVirtualItem = false,
             Recursive = true,

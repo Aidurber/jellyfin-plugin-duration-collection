@@ -1,3 +1,5 @@
+using System;
+
 namespace Jellyfin.Plugin.DurationCollection.Configuration;
 
 public class DurationCollection
@@ -7,12 +9,16 @@ public class DurationCollection
     {
     }
 
-    public DurationCollection(string title, double minMinutes, double maxMinutes)
+    public DurationCollection(
+        string title, double minMinutes, double maxMinutes, Guid libraryId = default)
     {
         Title = title;
         MinMinutes = minMinutes;
         MaxMinutes = maxMinutes;
+        LibraryId = libraryId;
     }
+
+    public Guid LibraryId { get; set; }
 
     public string Title { get; set; }
 

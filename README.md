@@ -1,8 +1,8 @@
 # Duration Collections
 
-Personal Jellyfin plugin creating collections from TV series average episode duration.
+Personal Jellyfin plugin creating duration-based collections from a selected Movies or TV Shows library.
 
-Each configured range is inclusive. Episodes without a positive known runtime are excluded from the average. Series with no known episode runtimes are skipped.
+Each configured range is inclusive. Movies use their runtime. TV series use the average runtime of episodes with known positive durations; series with no known episode runtimes are skipped.
 
 ## Compatibility
 
@@ -26,7 +26,7 @@ Published output is under `Jellyfin.Plugin.DurationCollection/bin/Release/net9.0
 1. Open `Dashboard -> Plugins -> Catalog -> Settings`.
 2. Add repository URL `https://raw.githubusercontent.com/Aidurber/jellyfin-plugin-duration-collection/main/manifest.json`.
 3. Install `Duration Collections` from catalog and restart Jellyfin.
-4. Open `Dashboard -> Plugins -> Duration Collections` and configure duration ranges.
+4. Open `Dashboard -> Plugins -> Duration Collections` and configure a source library and duration range for each collection.
 5. Save, then use `Sync duration collections` or run scheduled task `Sync Duration Collections`.
 
 ### Manual installation

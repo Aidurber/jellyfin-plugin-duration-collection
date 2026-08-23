@@ -36,7 +36,9 @@ public sealed class DurationCollectionSyncService : IDurationCollectionSyncServi
 
     public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
     {
-        var configurations = _configurationProvider.GetDurationCollections();
+        var configurations = _configurationProvider.GetDurationCollections()
+            .Where(configuration => configuration.LibraryId != Guid.Empty)
+            .ToList();
         for (var index = 0; index < configurations.Count; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -65,8 +67,7 @@ public sealed class DurationCollectionSyncService : IDurationCollectionSyncServi
         }
 
         var wantedItems = _libraryQueryService
-            .GetSeriesByAverageEpisodeDuration(configuration.MinMinutes, configuration.MaxMinutes)
-            .Cast<BaseItem>()
+            .GetItemsByDuration(configuration.LibraryId, configuration.MinMinutes, configuration.MaxMinutes)
             .ToList();
         var collection = FindCollection(configuration.Title);
 
