@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "2.0.0.2",
+        "changelog": "See release notes at https://github.com/Pixel-Collectiv/jellyfin-plugin-duration-collection/releases/tag/2.0.0.2",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/Pixel-Collectiv/jellyfin-plugin-duration-collection/releases/download/2.0.0.2/jellyfin-plugin-duration-collection-2.0.0.2.zip",
+        "checksum": "e9854b711eeaf9b8366b70ddd74506e1",
+        "timestamp": "2026-09-19T11:14:03Z"
+      },
+      {
         "version": "2.0.0.0",
         "changelog": "See release notes at https://github.com/Pixel-Collectiv/jellyfin-plugin-duration-collection/releases/tag/2.0.0.0",
         "targetAbi": "12.0.0.0",
