@@ -37,9 +37,9 @@ jobs:
         id: version
         shell: bash
         run: |
-          latest=$(git tag --list '[0-9]*.[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+          latest=$(git tag --list '2.0.0.*' --sort=-v:refname | head -n 1)
           if [[ -z "$latest" ]]; then
-            next="1.0.0.0"
+            next="2.0.0.0"
           else
             IFS=. read -r major minor patch revision <<< "$latest"
             next="$major.$minor.$patch.$((revision + 1))"
@@ -67,7 +67,7 @@ jobs:
           version="${{ steps.version.outputs.version }}"
           archive="jellyfin-plugin-duration-collection-$version.zip"
           mkdir release
-          cp Jellyfin.Plugin.DurationCollection/bin/Release/net9.0/Jellyfin.Plugin.DurationCollection.dll release/
+          cp Jellyfin.Plugin.DurationCollection/bin/Release/net10.0/Jellyfin.Plugin.DurationCollection.dll release/
           (cd release && zip -r "../$archive" .)
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
           echo "checksum=$(md5sum "$archive" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
@@ -91,7 +91,7 @@ jobs:
             '.[0].versions = ([{
               version: $version,
               changelog: $changelog,
-              targetAbi: "10.11.11.0",
+              targetAbi: "12.0.0.0",
               sourceUrl: $sourceUrl,
               checksum: $checksum,
               timestamp: $timestamp

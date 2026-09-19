@@ -6,18 +6,20 @@ Each configured range is inclusive. Movies use their runtime. TV series use the 
 
 ## Compatibility
 
-Current build targets Jellyfin `10.11.11` and .NET 9. Jellyfin plugin package versions must match the installed server version. Change both Jellyfin package references and `targetAbi` before building for another server version.
+Version **2.x** requires Jellyfin **12** and .NET 10. This is a breaking compatibility update; Jellyfin 10.11 users must stay on plugin **1.x**, whose releases remain in the catalog.
+
+Current build targets Jellyfin `12.0.0`. Existing plugin identity and configuration are preserved.
 
 ## Build
 
-Install .NET 9 SDK, then run:
+Install .NET 10 SDK, then run:
 
 ```sh
 make test
 make publish
 ```
 
-Published output is under `Jellyfin.Plugin.DurationCollection/bin/Release/net9.0/publish/`.
+Published output is under `Jellyfin.Plugin.DurationCollection/bin/Release/net10.0/publish/`.
 
 ## Install
 
