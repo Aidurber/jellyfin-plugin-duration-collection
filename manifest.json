@@ -4,7 +4,7 @@
     "name": "Duration Collections",
     "overview": "Create collections from series average episode duration",
     "description": "Creates and maintains Jellyfin collections containing series whose average episode duration falls within configured ranges.",
-    "owner": "Aidurber",
+    "owner": "Pixel-Collectiv",
     "category": "General",
     "versions": [
       {
@@ -17,25 +17,25 @@
       },
       {
         "version": "1.0.0.2",
-        "changelog": "See release notes at https://github.com/Aidurber/jellyfin-plugin-duration-collection/releases/tag/1.0.0.2",
+        "changelog": "See release notes at https://github.com/Pixel-Collectiv/jellyfin-plugin-duration-collection/releases/tag/1.0.0.2",
         "targetAbi": "10.11.11.0",
-        "sourceUrl": "https://github.com/Aidurber/jellyfin-plugin-duration-collection/releases/download/1.0.0.2/jellyfin-plugin-duration-collection-1.0.0.2.zip",
+        "sourceUrl": "https://github.com/Pixel-Collectiv/jellyfin-plugin-duration-collection/releases/download/1.0.0.2/jellyfin-plugin-duration-collection-1.0.0.2.zip",
         "checksum": "d3dedf86e78d44bc0f3309ddd95b9c8f",
         "timestamp": "2026-08-23T12:24:29Z"
       },
       {
         "version": "1.0.0.1",
-        "changelog": "See release notes at https://github.com/Aidurber/jellyfin-plugin-duration-collection/releases/tag/1.0.0.1",
+        "changelog": "See release notes at https://github.com/Pixel-Collectiv/jellyfin-plugin-duration-collection/releases/tag/1.0.0.1",
         "targetAbi": "10.11.11.0",
-        "sourceUrl": "https://github.com/Aidurber/jellyfin-plugin-duration-collection/releases/download/1.0.0.1/jellyfin-plugin-duration-collection-1.0.0.1.zip",
+        "sourceUrl": "https://github.com/Pixel-Collectiv/jellyfin-plugin-duration-collection/releases/download/1.0.0.1/jellyfin-plugin-duration-collection-1.0.0.1.zip",
         "checksum": "a4bfd39df4262c47db0c9fa3d882014b",
         "timestamp": "2026-08-23T12:13:15Z"
       },
       {
         "version": "1.0.0.0",
-        "changelog": "See release notes at https://github.com/Aidurber/jellyfin-plugin-duration-collection/releases/tag/1.0.0.0",
+        "changelog": "See release notes at https://github.com/Pixel-Collectiv/jellyfin-plugin-duration-collection/releases/tag/1.0.0.0",
         "targetAbi": "10.11.11.0",
-        "sourceUrl": "https://github.com/Aidurber/jellyfin-plugin-duration-collection/releases/download/1.0.0.0/jellyfin-plugin-duration-collection-1.0.0.0.zip",
+        "sourceUrl": "https://github.com/Pixel-Collectiv/jellyfin-plugin-duration-collection/releases/download/1.0.0.0/jellyfin-plugin-duration-collection-1.0.0.0.zip",
         "checksum": "f452718ac537c16f17bec564209254ab",
         "timestamp": "2026-07-12T17:19:12Z"
       }

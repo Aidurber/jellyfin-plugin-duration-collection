@@ -7,7 +7,7 @@ framework: "net10.0"
 overview: "Creates collections from series average episode duration"
 description: "Creates and maintains Jellyfin collections containing series whose average episode duration falls within configured ranges."
 category: "General"
-owner: "local"
+owner: "Pixel-Collectiv"
 artifacts:
   - "Jellyfin.Plugin.DurationCollection.dll"
 changelog: "Breaking: requires Jellyfin 12 and .NET 10"

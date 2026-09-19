@@ -26,7 +26,7 @@ Published output is under `Jellyfin.Plugin.DurationCollection/bin/Release/net10.
 ### Plugin catalog
 
 1. Open `Dashboard -> Plugins -> Catalog -> Settings`.
-2. Add repository URL `https://raw.githubusercontent.com/Aidurber/jellyfin-plugin-duration-collection/main/manifest.json`.
+2. Add repository URL `https://raw.githubusercontent.com/Pixel-Collectiv/jellyfin-plugin-duration-collection/main/manifest.json`.
 3. Install `Duration Collections` from catalog and restart Jellyfin.
 4. Open `Dashboard -> Plugins -> Duration Collections` and configure a source library and duration range for each collection.
 5. Save, then use `Sync duration collections` or run scheduled task `Sync Duration Collections`.
